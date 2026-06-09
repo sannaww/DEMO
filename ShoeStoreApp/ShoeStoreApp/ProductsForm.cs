@@ -1,0 +1,176 @@
+﻿using System;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
+using Npgsql;
+
+namespace ShoeStoreApp
+{
+    public partial class ProductsForm : Form
+    {
+        string cs = "Host=localhost; Port=5432; Database=DEMO; Username=postgres; Password=123123";
+        string userName, userRole;
+
+        public ProductsForm(string name, string role)
+        {
+            InitializeComponent();
+            userName = name;
+            userRole = role;
+            Font = new Font("Times New Roman", 12);
+            BackColor = Color.White;
+        }
+
+        private void ProductsForm_Load(object sender, EventArgs e)
+        {
+            labelUser.Text = $"Пользователь: {userName} ({userRole})";
+            // Кнопка добавления доступна только администратору
+            buttonAddProduct.Visible = userRole == "Администратор";
+            LoadProducts();
+        }
+        void LoadProducts()
+        {
+            // Получаем товары и связанные данные из справочников
+            string sql = @"
+                SELECT products.id, products.photo, products.price, products.unit,
+                       products.amount_in_stock, products.discount,
+                       product_names.name AS product_name,
+                       categories.name AS category,
+                       products.description,
+                       producers.name AS producer,
+                       providers.name AS provider
+                FROM products
+                JOIN product_names ON products.product_name_id = product_names.id
+                JOIN categories ON products.category_id = categories.id
+                JOIN producers ON products.producer_id = producers.id
+                JOIN providers ON products.provider_id = providers.id
+                ORDER BY products.id";
+
+            DataTable table = new DataTable();
+            new NpgsqlDataAdapter(sql, new NpgsqlConnection(cs)).Fill(table);
+            flowProducts.Controls.Clear();
+            foreach (DataRow row in table.Rows)
+                AddCard(row);
+        }
+        void AddCard(DataRow row)
+        {
+            int id = Convert.ToInt32(row["id"]);
+            decimal price = Convert.ToDecimal(row["price"]);
+            decimal sale = Convert.ToDecimal(row["discount"]);
+            decimal count = Convert.ToDecimal(row["amount_in_stock"]);
+            decimal newPrice = price - price * sale / 100;
+            // Карточка товара
+            Panel card = new Panel
+            {
+                Size = new Size(850, 150),
+                Margin = new Padding(10),
+                BackColor = sale > 15 ? Color.FromArgb(46, 139, 87) : Color.White
+            };
+            // Если товара нет на складе — голубой фон
+            if (count <= 0)
+                card.BackColor = Color.LightBlue;
+            // Фото товара
+            PictureBox pic = new PictureBox
+            {
+                Bounds = new Rectangle(10, 20, 110, 90),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Image = GetImage(row["photo"].ToString())
+            };
+            // Основная информация
+            Label info = new Label
+            {
+                Bounds = new Rectangle(140, 10, 500, 130),
+                BackColor = Color.Transparent,
+                Font = new Font("Times New Roman", 11),
+                Text =
+                    $"{row["category"]} | {row["product_name"]}\n" +
+                    $"{row["description"]}\n" +
+                    $"Производитель: {row["producer"]}\n" +
+                    $"Поставщик: {row["provider"]}\n" +
+                    $"Цена: {price:0.00} руб.\n" +
+                    $"Ед. изм.: {row["unit"]}   Кол-во: {count}"
+            };
+            // Скидка и цена со скидкой
+            Label saleText = new Label
+            {
+                Bounds = new Rectangle(660, 35, 140, 70),
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Times New Roman", 12, FontStyle.Bold),
+                Text = sale > 0 ? $"Скидка: {sale}%\n{newPrice:0.00} руб." : $"Скидка: {sale}%"
+            };
+            // Белый текст на темно-зеленом фоне
+            if (sale > 15 && count > 0)
+            {
+                info.ForeColor = Color.White;
+                saleText.ForeColor = Color.White;
+            }
+            card.Controls.Add(pic);
+            card.Controls.Add(info);
+            card.Controls.Add(saleText);
+            // Для администратора: редактирование и удаление
+            if (userRole == "Администратор")
+            {
+                Button del = new Button
+                {
+                    Text = "Удалить",
+                    Bounds = new Rectangle(720, 110, 100, 30),
+                    BackColor = Color.FromArgb(0, 250, 154)
+                };
+                del.Click += (s, e) => DeleteProduct(id);
+                card.Click += (s, e) => EditProduct(id);
+                info.Click += (s, e) => EditProduct(id);
+                pic.Click += (s, e) => EditProduct(id);
+
+                card.Controls.Add(del);
+            }
+            flowProducts.Controls.Add(card);
+        }
+        Image GetImage(string photo)
+        {
+            // Если фото не найдено — берем заглушку
+            string path = Path.Combine(Application.StartupPath, photo.Replace("/", "\\"));
+            if (!File.Exists(path))
+                path = Path.Combine(Application.StartupPath, "Res\\picture.png");
+            return Image.FromFile(path);
+        }
+        void EditProduct(int id)
+        {
+            // Открытие формы редактирования
+            new ProductEditForm(id).ShowDialog();
+            LoadProducts();
+        }
+        void DeleteProduct(int id)
+        {
+            // Подтверждение удаления
+            if (MessageBox.Show("Удалить товар?", "Подтверждение", MessageBoxButtons.YesNo) != DialogResult.Yes)
+                return;
+            using var con = new NpgsqlConnection(cs);
+            con.Open();
+            // Проверяем, есть ли товар в заказах
+            using var check = new NpgsqlCommand("SELECT COUNT(*) FROM product_in_order WHERE product_id=@id", con);
+            check.Parameters.AddWithValue("@id", id);
+
+            if (Convert.ToInt32(check.ExecuteScalar()) > 0)
+            {
+                MessageBox.Show("Нельзя удалить товар, который есть в заказе");
+                return;
+            }
+            // Удаляем товар
+            using var cmd = new NpgsqlCommand("DELETE FROM products WHERE id=@id", con);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+            LoadProducts();
+        }
+        private void buttonAddProduct_Click_1(object sender, EventArgs e)
+        {
+            // Открытие формы добавления
+            new ProductEditForm().ShowDialog();
+            LoadProducts();
+        }
+        private void buttonExit_Click(object sender, EventArgs e)
+        {
+            Close();
+        }
+    }
+}

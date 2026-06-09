@@ -1,0 +1,141 @@
+using System;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
+using Npgsql;
+
+namespace ShoeStoreApp
+{
+    public partial class ProductsForm : Form
+    {
+        string cs = "Host=localhost; Port=5432; Database=DEMO; Username=postgres; Password=123123";
+        string userName, userRole;
+
+        public ProductsForm(string name, string role)
+        {
+            InitializeComponent();
+            userName = name;
+            userRole = role;
+
+            this.Font = new Font("Times New Roman", 12);
+            this.BackColor = Color.White;
+        }
+
+        private void ProductsForm_Load(object sender, EventArgs e)
+        {
+            // Выводим пользователя на форму
+            labelUser.Text = $"Пользователь: {userName} ({userRole})";
+            // Загружаем товары
+            LoadProducts();
+        }
+
+        void LoadProducts()
+        {
+            // SQL-запрос для получения товаров и связанных данных
+            string sql = @"
+                SELECT products.photo, products.price, products.unit,
+                       products.amount_in_stock, products.discount,
+                       product_names.name AS product_name,
+                       categories.name AS category,
+                       products.description,
+                       producers.name AS producer,
+                       providers.name AS provider
+                FROM products
+                JOIN product_names ON products.product_name_id = product_names.id
+                JOIN categories ON products.category_id = categories.id
+                JOIN producers ON products.producer_id = producers.id
+                JOIN providers ON products.provider_id = providers.id
+                ORDER BY products.id";
+
+            // Получаем данные из базы
+            var table = new DataTable();
+            new NpgsqlDataAdapter(sql, new NpgsqlConnection(cs)).Fill(table);
+            // Очищаем старый список товаров
+            flowProducts.Controls.Clear();
+
+            // Создаем карточки товаров
+            foreach (DataRow row in table.Rows)
+            {
+                decimal price = Convert.ToDecimal(row["price"]);
+                decimal sale = Convert.ToDecimal(row["discount"]);
+                decimal count = Convert.ToDecimal(row["amount_in_stock"]);
+                decimal newPrice = price - price * sale / 100;
+
+                // Карточка товара
+                Panel card = new Panel();
+                card.Size = new Size(850, 140);
+                card.Margin = new Padding(10);
+                card.BackColor = Color.White;
+
+                // Если скидка больше 15%, фон зеленый
+                if (sale > 15)
+                    card.BackColor = Color.FromArgb(46, 139, 87);
+                // Если товара нет на складе, фон голубой
+                if (count <= 0)
+                    card.BackColor = Color.LightBlue;
+
+                // Фото товара
+                PictureBox pic = new PictureBox();
+                pic.SetBounds(10, 20, 110, 90);
+                pic.SizeMode = PictureBoxSizeMode.Zoom;
+                pic.Image = GetImage(row["photo"].ToString());
+
+                // Основная информация о товаре
+                Label info = new Label();
+                info.SetBounds(140, 10, 520, 120);
+                info.BackColor = Color.Transparent;
+                info.Font = new Font("Times New Roman", 11);
+                info.Text =
+                    row["category"] + " | " + row["product_name"] + "\n" +
+                    row["description"] + "\n" +
+                    "Производитель: " + row["producer"] + "\n" +
+                    "Поставщик: " + row["provider"] + "\n" +
+                    "Цена: " + price.ToString("0.00") + " руб.\n" +
+                    "Ед. изм.: " + row["unit"] + "   Кол-во: " + count;
+
+                // Скидка и итоговая цена
+                Label saleText = new Label();
+                saleText.SetBounds(680, 35, 140, 70);
+                saleText.BackColor = Color.Transparent;
+                saleText.TextAlign = ContentAlignment.MiddleCenter;
+                saleText.Font = new Font("Times New Roman", 12, FontStyle.Bold);
+                saleText.Text = "Скидка: " + sale + "%";
+
+                if (sale > 0)
+                    saleText.Text += "\n" + newPrice.ToString("0.00") + " руб.";
+
+                // Белый текст на темно-зеленом фоне
+                if (sale > 15 && count > 0)
+                {
+                    info.ForeColor = Color.White;
+                    saleText.ForeColor = Color.White;
+                }
+
+                // Добавляем элементы на карточку
+                card.Controls.Add(pic);
+                card.Controls.Add(info);
+                card.Controls.Add(saleText);
+                // Добавляем карточку в список
+                flowProducts.Controls.Add(card);
+            }
+        }
+
+        Image GetImage(string photo)
+        {
+            // Путь к фото товара
+            string path = Path.Combine(Application.StartupPath, photo.Replace("/", "\\"));
+            // Если фото нет, берем заглушку
+            if (!File.Exists(path))
+                path = Path.Combine(Application.StartupPath, "Res\\picture.png");
+            // Возвращаем картинку
+            return Image.FromFile(path);
+        }
+
+        private void buttonExit_Click(object sender, EventArgs e)
+        {
+            // Закрытие формы
+            this.Close();
+        }
+    }
+}
