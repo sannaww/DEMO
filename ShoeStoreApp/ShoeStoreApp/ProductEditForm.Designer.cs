@@ -213,11 +213,11 @@
             // 
             comboBoxName.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxName.FormattingEnabled = true;
+            comboBoxName.Items.AddRange(new object[] { "Ботинки", "Туфли", "Кроссовки" });
             comboBoxName.Location = new Point(195, 245);
             comboBoxName.Name = "comboBoxName";
             comboBoxName.Size = new Size(260, 30);
             comboBoxName.TabIndex = 18;
-            comboBoxName.SelectedIndexChanged += ProductEditForm_Load;
             // 
             // comboBoxCategory
             // 
@@ -227,7 +227,6 @@
             comboBoxCategory.Name = "comboBoxCategory";
             comboBoxCategory.Size = new Size(260, 30);
             comboBoxCategory.TabIndex = 19;
-            comboBoxCategory.SelectedIndexChanged += ProductEditForm_Load;
             // 
             // comboBoxProducer
             // 
@@ -237,7 +236,6 @@
             comboBoxProducer.Name = "comboBoxProducer";
             comboBoxProducer.Size = new Size(260, 30);
             comboBoxProducer.TabIndex = 20;
-            comboBoxProducer.SelectedIndexChanged += ProductEditForm_Load;
             // 
             // comboBoxProvider
             // 
@@ -247,7 +245,6 @@
             comboBoxProvider.Name = "comboBoxProvider";
             comboBoxProvider.Size = new Size(260, 30);
             comboBoxProvider.TabIndex = 21;
-            comboBoxProvider.SelectedIndexChanged += ProductEditForm_Load;
             // 
             // buttonSave
             // 
@@ -306,7 +303,8 @@
             Margin = new Padding(4, 3, 4, 3);
             Name = "ProductEditForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Товар";
+            Text = "Добавление товара";
+            Load += ProductEditForm_Load;
             ((System.ComponentModel.ISupportInitialize)pictureBoxProduct).EndInit();
             ResumeLayout(false);
             PerformLayout();
