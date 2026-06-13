@@ -87,17 +87,19 @@
             // 
             // textBoxLogin
             // 
+            textBoxLogin.Font = new Font("Times New Roman", 12F, FontStyle.Regular, GraphicsUnit.Point, 204);
             textBoxLogin.Location = new Point(341, 71);
             textBoxLogin.Name = "textBoxLogin";
-            textBoxLogin.Size = new Size(267, 25);
+            textBoxLogin.Size = new Size(267, 30);
             textBoxLogin.TabIndex = 4;
             // 
             // textBoxPassword
             // 
+            textBoxPassword.Font = new Font("Times New Roman", 12F, FontStyle.Regular, GraphicsUnit.Point, 204);
             textBoxPassword.Location = new Point(341, 142);
             textBoxPassword.Name = "textBoxPassword";
             textBoxPassword.PasswordChar = '*';
-            textBoxPassword.Size = new Size(267, 25);
+            textBoxPassword.Size = new Size(267, 30);
             textBoxPassword.TabIndex = 5;
             // 
             // pictureBox1
@@ -125,6 +127,7 @@
             Font = new Font("Times New Roman", 9F, FontStyle.Regular, GraphicsUnit.Point, 204);
             Name = "Form1";
             Text = "Авторизация";
+            Load += Form1_Load;
             ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
             ResumeLayout(false);
             PerformLayout();

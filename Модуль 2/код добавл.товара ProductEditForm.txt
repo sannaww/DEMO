@@ -154,11 +154,20 @@ namespace ShoeStoreApp
         }
         private void buttonPhoto_Click_1(object sender, EventArgs e)
         {
-            OpenFileDialog d = new OpenFileDialog(); // Выбор фото
-            d.Filter = "Картинки|*.jpg;*.png;*.jpeg";
+            OpenFileDialog d = new OpenFileDialog();
+            d.Filter = "Картинки|*.jpg;*.jpeg;*.png";
+
             if (d.ShowDialog() == DialogResult.OK)
             {
-                photo = "Res/" + Path.GetFileName(d.FileName);
+                string file = Path.GetFileName(d.FileName);
+                string folder = Path.Combine(Application.StartupPath, "Res");
+
+                if (!Directory.Exists(folder))
+                    Directory.CreateDirectory(folder);
+
+                File.Copy(d.FileName, Path.Combine(folder, file), true);
+
+                photo = "Res/" + file;
                 ShowPhoto();
             }
         }

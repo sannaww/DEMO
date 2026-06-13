@@ -75,6 +75,7 @@
             buttonPhoto.TabIndex = 1;
             buttonPhoto.Text = "Выбрать фото";
             buttonPhoto.UseVisualStyleBackColor = false;
+            buttonPhoto.Click += buttonPhoto_Click_1;
             // 
             // label1
             // 
